@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8' />
+  <title>USAID | Where We Work</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+  <script src='https://npmcdn.com/csv2geojson@latest/csv2geojson.js'></script>
+  <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+  <style type="text/css">
+  /* Basic styling for Web page including structure and text */
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  h2,
+  h3 {
+    margin: 10px;
+    font-size: 1.2em;
+  }
+
+  h3 {
+    font-size: 1em;
+  }
+
+  p {
+    font-size: 0.85em;
+    margin: 10px;
+    text-align: center;
+  }
+
+  img{
+    border-radius: 10px;
+  }
+
+  /* Map Container */
+  #map {
+    position: absolute;
+    top: 0px;
+    bottom: 0;
+    width: 100%;
+  }
+
+  /**
+  * Determines how features will be displayed over map
+  * including the "Where We Work" container */
+  .map-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #51535b;
+    margin-right: 20px;
+    font-family: sans-serif;
+    color: #fff;
+    overflow: auto;
+    border-radius: 8px;
+  }
+
+  /* Feature Styling for anything over map including title, logo, etc */
+  #features {
+    bottom: 40px;
+    height: 135px;
+    margin-top: 20px;
+    width: 250px;
+    opacity: 0.75;
+    text-align: center;
+    font-size: 20px;
+  }
+
+  /* Title and Logo Container */
+  .logo {
+    position: absolute;
+    top: 5px;
+    left: 15px;
+    margin-right: 20px;
+    /*opacity: 0.95;*/
+    mix-blend-mode: multiply;
+  }
+
+  /* Popup styling */
+  .mapboxgl-popup {
+    padding-bottom: 5px;
+  }
+
+  .mapboxgl-popup-close-button {
+    display: none;
+  }
+
+  .mapboxgl-popup-content {
+    font: 400 15px/22px 'Source Sans Pro', 'Helvetica Neue', Sans-serif;
+    padding: 0;
+    width: 250px;
+    height:150px;
+    overflow-y: scroll;
+    /*border-radius: 5px;*/
+  }
+
+  .mapboxgl-popup-content-wrapper {
+    padding: 1%;
+  }
+
+  .mapboxgl-popup-content h3 {
+    background: rgb(58, 62, 66);
+    text-align: center;
+    color: #fff;
+    margin: 0;
+    display: block;
+    padding: 15px;
+    font-weight: 700;
+    margin-top: -5px;
+  }
+
+  .mapboxgl-popup-content h4 {
+    margin: 0;
+    display: block;
+    padding: 10px 3px 10px 10px;
+    font-weight: 400;
+  }
+
+  .mapboxgl-container {
+    cursor: pointer;
+  }
+
+  .mapboxgl-popup-anchor-top>.mapboxgl-popup-content {
+    margin-top: 3px;
+  }
+
+  .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
+    border-bottom-color: rgb(61, 59, 59);
+  }
+
+  /* Toggle Layer styling */
+  /*#border {
+    position: absolute;
+    z-index: 1;
+    top: 20px;
+    right: 20px;
+    width: 140px;
+    opacity: 0.9;
+  }
+  #title {
+      background: #535459;
+      height: 25px;
+      width: 100%;
+      font-family: 'Open Sans', sans-serif;
+      font-weight: bold;
+      text-align: center;
+      color: #fff;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    }
+  #button {
+    width: 25px;
+    height: 25px;
+    float: right;
+    cursor: pointer;
+    text-align: center;
+  }*/
+  #menu {
+    background: #ffffff;
+    position: absolute;
+    z-index: 1;
+    top: 20px;
+    right: 20px;
+    width: 120px;
+    border-color: #404040;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: bold;
+    opacity: 0.8;
+  }
+
+  #menu a {
+    font-size: 16px;
+    color: #404040;
+    display: block;
+    margin: 0;
+    padding: 0;
+    padding: 10px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    text-align: center;
+  }
+
+  #menu a:first-child {
+    border: none;
+  }
+
+  #menu a:hover {
+    background-color: #f8f8f8;
+    color: #404040;
+  }
+
+  #menu a.active {
+    background-color: #535459;
+    color: #ffffff;
+  }
+
+  #menu a.active:hover {
+    background: #404042;
+  }
+  </style>
+</head>
+
+<body>
+  <!-- Container Where User can Toggle Layer(s)-->
+  <nav id="menu"></nav>
+  <!-- Map div below to display mapbox basemap -->
+  <div id='map'></div>
+  <!--divs below for features like the USAID logo and Title and Information Container-->
+  <div class='map-overlay' id='features'><br><h2>Where We Work</h2><div id='pd'><p>Hover over a country</p><br></div></div>
+  <div class='logo'><img src="images/usaid_logo.png" alt="USAID" width="330px"></div>
+  <script>
+    // Add map style and layout
+      var transformRequest = (url, resourceType) => {
+      var isMapboxRequest =
+        url.slice(8, 22) === "api.mapbox.com" ||
+        url.slice(10, 26) === "tiles.mapbox.com";
+      return {
+        url: isMapboxRequest
+          ? url.replace("?", "?pluginName=sheetMapper&")
+          : url
+      };
+    };
+    // Add access token to display map
+    mapboxgl.accessToken = 'pk.eyJ1IjoiY2F3aWxsaWFtcyIsImEiOiJja2xsZ3pxdmczaDZjMndxZXB2aXdrdTZ3In0.TBD0QCuYQMkeamI_srV2XQ';
+    // Map Variable to add basemap designed using Mapbox Studio
+    var map = new mapboxgl.Map({
+      container: 'map', // map container id
+      style: 'mapbox://styles/cawilliams/ckox99c0i0uii18lpofb2dbo5', // style link
+      center: [-28.0791, 17.5454], // starting position [lng, lat]
+      zoom: 4, // starting zoom
+      transformRequest: transformRequest,
+      attributionControl: false // Set to false since custom attribution is used later
+    });
+
+    // Determines window in which map is zoomed out to
+    map.on('load', function() {
+      map.getCanvas().style.cursor = 'default';
+      // set map bounds to focus on USAID country involvement
+      map.fitBounds([
+        [-116, 2],
+        [123, 40]
+        ]);
+
+          // Add the information window for USAID - Where We Work
+          map.on('mousemove', function(e) {
+            var country = map.queryRenderedFeatures(e.point, {
+              layers: ['usaid-countries-9smxff'] // data name when added to mapbox basemap in studio
+              });
+
+              if (country.length > 0) {
+                document.getElementById('pd').innerHTML = '<h3><strong>' + country[0].properties.ADMIN ; // ADMIN is country name in dataset
+                } else {
+                  document.getElementById('pd').innerHTML = '<p>Hover over a country</p><br>'; // text when not hovering over USAID country
+                  }
+              });
+          });
+
+          // Add Story Data from google sheet
+          $(document).ready(function () {
+            $.ajax({
+              type: "GET",
+              // USAID Story google sheet link:https://docs.google.com/spreadsheets/d/118nKmFhqSo9SpS-Zuqy8R5ojwCo8UrvjHM5zD7xuIeI/edit?usp=sharing
+              url: 'https://docs.google.com/spreadsheets/d/118nKmFhqSo9SpS-Zuqy8R5ojwCo8UrvjHM5zD7xuIeI/gviz/tq?tqx=out:csv&sheet=Sheet1',
+              dataType: "text",
+              success: function (Story) { makeGeoJSON(Story); }
+            });
+            function makeGeoJSON(Story) {
+              csv2geojson.csv2geojson(Story, {
+                latfield: 'y',
+                lonfield: 'x',
+                delimiter: ','
+              }, function (err, data) {
+                map.on('load', function () {
+                  //Add the the layer to the map
+                  map.addLayer({
+                    'id': 'Story',
+                    'type': 'circle',
+                    'source': {
+                      'type': 'geojson',
+                      'data': data
+                    },
+                    'paint': {
+                      'circle-radius': 5,
+                      'circle-color': '#7fa0e3',
+                    },
+                  });
+
+                  // When a click event occurs on a feature in the Story layer, open a popup at the
+                              // location of the feature, with description HTML from its properties.
+                              map.on('click', 'Story', function (e) {
+                                var coordinates = e.features[0].geometry.coordinates.slice();
+
+                                //set popup text
+                                //You can adjust the values of the popup to match the headers of your CSV.
+                                // For example: e.features[0].properties.Name is retrieving information from the field Name in the original CSV.
+                                var description = `<h3>` + e.features[0].properties.Country + `</h3>`+ `<h4>` + `<b>` + `<a href=` + e.features[0].properties.url + `>Behind the Story</a>` + `</b>` + `</h4>` + `<h4>` + `<b>` + `Story: ` + `</b>` + e.features[0].properties.Story + `</h4>`;
+
+                                // Ensure that if the map is zoomed out such that multiple
+                                // copies of the feature are visible, the popup appears
+                                // over the copy being pointed to.
+                                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                                  coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                                }
+
+                                //add Popup to map
+
+                                new mapboxgl.Popup()
+                                  .setLngLat(coordinates)
+                                  .setHTML(description)
+                                  .addTo(map);
+                              });
+
+                              // Change the cursor to a pointer when the mouse is over the places layer.
+                              map.on('mouseenter', 'Story', function () {
+                                map.getCanvas().style.cursor = 'pointer';
+                              });
+
+                              // Change it back to a pointer when it leaves.
+                              map.on('mouseleave', 'places', function () {
+                                map.getCanvas().style.cursor = '';
+                              });
+
+                            });
+
+                          });
+                        };
+                      });
+    // Add Activity Data from google sheet
+    $(document).ready(function () {
+      $.ajax({
+        type: "GET",
+        // USAID Activity google sheet link:https://docs.google.com/spreadsheets/d/1S3tFnQF0QMIQ0S850pPIa0kipmZPPeUxnUqwoOOMpUE/edit?usp=sharing
+        url: 'https://docs.google.com/spreadsheets/d/1S3tFnQF0QMIQ0S850pPIa0kipmZPPeUxnUqwoOOMpUE/gviz/tq?tqx=out:csv&sheet=Sheet1',
+        dataType: "text",
+        success: function (Activity) { makeGeoJSON(Activity); }
+      });
+      function makeGeoJSON(Activity) {
+        csv2geojson.csv2geojson(Activity, {
+          latfield: 'y',
+          lonfield: 'x',
+          delimiter: ','
+        }, function (err, data) {
+          map.on('load', function () {
+            //Add the the layer to the map
+            map.addLayer({
+              'id': 'Activity',
+              'type': 'circle',
+              'source': {
+                'type': 'geojson',
+                'data': data
+              },
+              'paint': {
+                'circle-radius': 5,
+                'circle-color': '#e03669',
+              },
+            });
+            // When a click event occurs on a feature in the Activity layer, open a popup at the
+                        // location of the feature, with description HTML from its properties.
+                        map.on('click', 'Activity', function (e) {
+                          var coordinates = e.features[0].geometry.coordinates.slice();
+
+                          //set popup text
+                          //You can adjust the values of the popup to match the headers of your CSV.
+                          // For example: e.features[0].properties.Name is retrieving information from the field Name in the original CSV.
+                          var description = `<h3>` + e.features[0].properties.Country + `</h3>` + `<h4>` + `<b>` + `Activity: ` + `</b>` + e.features[0].properties.Activity + `</h4>` + `<h4>` + `<b>` + `Sector: ` + `</b>` + e.features[0].properties.Sector + `</h4>` + `<h4>` + `<b>` + `Description: ` + `</b>` + e.features[0].properties.Description + `</h4>` + `<h4>` + `<b>` + `Start Date: ` + `</b>` + e.features[0].properties.Start + `</h4>`+  `<h4>` + `<b>` + `End Date: ` + `</b>` + e.features[0].properties.End + `</h4>` + `<h4>` + `<b>` + `Partner: ` + `</b>` + e.features[0].properties.Partner + `</h4>`;
+
+                          // Ensure that if the map is zoomed out such that multiple
+                          // copies of the feature are visible, the popup appears
+                          // over the copy being pointed to.
+                          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                          }
+
+                          //add Popup to map
+
+                          new mapboxgl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(description)
+                            .addTo(map);
+                        });
+
+                        // Change the cursor to a pointer when the mouse is over the places layer.
+                        map.on('mouseenter', 'Activity', function () {
+                          map.getCanvas().style.cursor = 'pointer';
+                        });
+
+                        // Change it back to a pointer when it leaves.
+                        map.on('mouseleave', 'places', function () {
+                          map.getCanvas().style.cursor = '';
+                        });
+
+                        //var bbox = turf.bbox(data);
+                        //map.fitBounds(bbox, { padding: 10 });
+
+                      });
+
+                    });
+                  };
+                });
+
+
+      // Toggle Layers - Story and Activity
+      map.on('idle', function () {
+        // If these two layers have been added to the style,
+        // add the toggle buttons.
+        if (map.getLayer('Activity') && map.getLayer('Story')) {
+            // Enumerate ids of the layers.
+            var toggleableLayerIds = ['Activity', 'Story'];
+            // Set up the corresponding toggle button for each layer.
+            for (var i = 0; i < toggleableLayerIds.length; i++) {
+                var id = toggleableLayerIds[i];
+                if (!document.getElementById(id)) {
+                    // Create a link.
+                    var link = document.createElement('a');
+                    link.id = id;
+                    link.href = '#';
+                    link.textContent = id;
+                    link.className = 'active';
+                    // Show or hide layer when the toggle is clicked.
+                    link.onclick = function (e) {
+                        var clickedLayer = this.textContent;
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        var visibility = map.getLayoutProperty(
+                            clickedLayer,
+                            'visibility'
+                        );
+
+                        // Toggle layer visibility by changing the layout object's visibility property.
+                        if (visibility === 'none') {
+                            map.setLayoutProperty(
+                                clickedLayer,
+                                'visibility',
+                                'visible'
+                            );
+                            this.className = 'active';
+                        } else {
+                            this.className = '';
+                            map.setLayoutProperty(
+                                clickedLayer,
+                                'visibility',
+                                'none'
+                            );
+                              $('.mapboxgl-popup').remove(); // removes popup when any layer is turned off
+                        }
+
+                  //      for (var j = 0; j < toggleableLayerIds.length; j++) {
+                  //        if (clickedLayer === toggleableLayerIds[j]) {
+                  //          $('.mapboxgl-popup').remove(j)
+                  //        }
+                  //      }
+
+                    };
+
+                    var layers = document.getElementById('menu');
+                    layers.appendChild(link);
+                }
+            }
+        }
+    });
+
+    // Add Zoom In/Out and North controls
+    // Decided to not add geolocation as it is not necessary for this map
+    map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
+
+    // Add Custom Attribution
+    map.addControl(new mapboxgl.AttributionControl({
+      customAttribution: 'Activity Data by <a href="https://data.usaid.gov/Evaluation/USAID-Activity-Locations-Activity-Descriptions/jusn-k97d" target="_blank">USAID</a>' + ' | ' + 'Story Data by <a href="https://stories.usaid.gov/" target="_blank">USAID Storytelling Hub</a>'
+    }));
+
+    //$("#button").click(function(){
+      //  $("#menu").slideToggle();
+    //});
+  </script>
+</body>
+
+    © 2022 GitHub, Inc.
+
+    Terms
+    Privacy
+    Security
+    Status
+    Docs
+    Contact GitHub
+    Pricing
+    API
+    Training
+    Blog
+    About
+
+Loading complete
